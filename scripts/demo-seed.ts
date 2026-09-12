@@ -23,7 +23,9 @@ if (accountCount !== 0 || recordCount !== 0) {
   throw new Error(`Dataset ${datasetVersion} is partially populated (${accountCount} accounts, ${recordCount} records). Refusing to mutate an immutable dataset.`);
 }
 await client.insert('accounts', accounts.map((row) => ({ dataset_version: row.datasetVersion, account_id: row.accountId, plan: row.plan, organization_type: row.organizationType, university_verified: row.universityVerified })));
-await client.insert('records', records.map((row) => ({ dataset_version: row.datasetVersion, record_id: row.recordId, account_id: row.accountId, created_at: row.createdAt })));
+// JSONEachRow's DateTime64 parser expects the server datetime representation. The immutable
+// fixture remains canonical UTC ISO; conversion occurs only at this admin ingestion boundary.
+await client.insert('records', records.map((row) => ({ dataset_version: row.datasetVersion, record_id: row.recordId, account_id: row.accountId, created_at: row.createdAt.replace('T', ' ').replace('Z', '') })));
 const after = (await client.query(`SELECT (SELECT count() FROM accounts WHERE dataset_version = '${datasetVersion}') AS accounts, (SELECT count() FROM records WHERE dataset_version = '${datasetVersion}') AS records`))[0];
 if (count(after, 'accounts') !== 6 || count(after, 'records') !== 19) throw new Error('Seed verification failed; fixture counts are not 6 accounts and 19 records.');
 console.log(`Seeded immutable dataset ${datasetVersion}: 6 accounts, 19 records. Configure/restart bridge and worker explicitly to activate this version.`);

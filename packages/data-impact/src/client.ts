@@ -4,7 +4,12 @@ import type { QueryParameters } from './compiler.js';
 import type { ValidImpactConfig } from './config.js';
 
 export interface ClickHouseResponse { queryId: string; row: Record<string, unknown> }
-function asParameter(value: string | number | readonly (string | number)[]): string { return Array.isArray(value) ? JSON.stringify(value) : String(value); }
+function asParameter(value: string | number | readonly (string | number)[]): string {
+  if (!Array.isArray(value)) return String(value);
+  // ClickHouse query parameters use SQL array literals rather than JSON. Array members originate
+  // exclusively from the validated Plan/OrganizationType/boolean contract enums.
+  return `[${value.map((item) => typeof item === 'string' ? `'${item.replaceAll("'", "\\'")}'` : String(item)).join(',')}]`;
+}
 function providerError(status: number): PublicError {
   if (status === 401 || status === 403) return publicError('AUTH', 'ClickHouse rejected the configured read-only identity.');
   if (status === 429) return publicError('RATE_LIMIT', 'ClickHouse rate limited the impact query.');

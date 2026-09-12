@@ -19,7 +19,16 @@ CREATE TABLE IF NOT EXISTS accord_demo.records (
 ORDER BY (dataset_version, account_id, record_id);
 
 -- This is the only relation granted to the worker runtime role.
-CREATE VIEW IF NOT EXISTS accord_demo.accord_retention_view AS
+-- The application account can query this view but cannot read the underlying
+-- source tables.  The definer has no host access and only the two source-table
+-- SELECT grants below, keeping the view's authority deliberately narrow.
+CREATE USER IF NOT EXISTS accord_view_owner IDENTIFIED WITH no_password HOST NONE;
+GRANT SELECT ON accord_demo.accounts TO accord_view_owner;
+GRANT SELECT ON accord_demo.records TO accord_view_owner;
+
+CREATE OR REPLACE VIEW accord_demo.accord_retention_view
+DEFINER = accord_view_owner
+SQL SECURITY DEFINER AS
 SELECT
   accounts.dataset_version,
   accounts.account_id,

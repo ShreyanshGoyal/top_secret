@@ -13,7 +13,7 @@ services:
       - ./clickhouse/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       - ./clickhouse/roles.sql:/docker-entrypoint-initdb.d/02-roles.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8123/ping | grep -qx Ok"]
+      test: ["CMD-SHELL", "clickhouse-client --user \"$$CLICKHOUSE_USER\" --password \"$$CLICKHOUSE_PASSWORD\" --query 'SELECT 1' | grep -qx 1"]
       interval: 5s
       timeout: 3s
       retries: 20
