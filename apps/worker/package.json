@@ -11,6 +11,11 @@
   "dependencies": {
     "@accord/contracts": "*",
     "@accord/core": "*",
-    "@accord/store": "*"
+    "@accord/data-impact": "*",
+    "@accord/privacy": "*",
+    "@accord/repo-investigator": "*",
+    "@accord/slack-delivery": "*",
+    "@accord/store": "*",
+    "@trigger.dev/sdk": "4.5.16"
   }
 }
