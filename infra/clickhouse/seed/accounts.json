@@ -1,0 +1,8 @@
+[
+  {"datasetVersion":"accord-demo-2026-09-12","accountId":"a01","plan":"free","organizationType":"university","universityVerified":true},
+  {"datasetVersion":"accord-demo-2026-09-12","accountId":"a02","plan":"free","organizationType":"university","universityVerified":true},
+  {"datasetVersion":"accord-demo-2026-09-12","accountId":"a03","plan":"free","organizationType":"university","universityVerified":false},
+  {"datasetVersion":"accord-demo-2026-09-12","accountId":"a04","plan":"paid","organizationType":"university","universityVerified":true},
+  {"datasetVersion":"accord-demo-2026-09-12","accountId":"a05","plan":"free","organizationType":"company","universityVerified":true},
+  {"datasetVersion":"accord-demo-2026-09-12","accountId":"a06","plan":"free","organizationType":"personal","universityVerified":false}
+]

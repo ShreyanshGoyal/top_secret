@@ -1,0 +1,10 @@
+{
+  "datasetVersion": "accord-demo-2026-09-12",
+  "asOf": "2026-09-12T00:00:00.000Z",
+  "accounts": 6,
+  "records": 19,
+  "target": {"accounts": 2, "records": 11, "baselineSelected": 9, "intendedSelected": 2},
+  "totals": {"baselineSelected": 17, "intendedSelected": 10},
+  "prematureRecordIds": ["a01-r31", "a01-r89", "a01-r90", "a02-r31", "a02-r60", "a02-r89", "a02-r90"],
+  "controlsSelected": 8
+}

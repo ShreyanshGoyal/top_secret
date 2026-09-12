@@ -1,0 +1,35 @@
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.3.3.42
+    ports: ["8123:8123", "9000:9000"]
+    environment:
+      CLICKHOUSE_DB: accord_demo
+      CLICKHOUSE_USER: accord_admin
+      # Local-only development credential. Production seed credentials are external secrets.
+      CLICKHOUSE_PASSWORD: local-development-only
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+      - ./clickhouse/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./clickhouse/roles.sql:/docker-entrypoint-initdb.d/02-roles.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8123/ping | grep -qx Ok"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  postgres:
+    image: postgres:17.4-alpine
+    ports: ["5432:5432"]
+    environment:
+      POSTGRES_DB: accord
+      POSTGRES_USER: accord_admin
+      POSTGRES_PASSWORD: local-development-only
+    volumes: ["postgres-data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U accord_admin -d accord"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+volumes:
+  clickhouse-data: {}
+  postgres-data: {}
