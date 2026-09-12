@@ -1,85 +1,20 @@
-import { AbstractAgent } from "@ag-ui/client";
-import type { BaseEvent, RunAgentInput } from "@ag-ui/core";
-import { makeAgent } from "agent-core";
-import { Observable, type Subscription } from "rxjs";
-
-type ChannelAgentFactory = (threadId: string) => AbstractAgent;
-
-/**
- * Channel-only facade that keeps AG-UI transcript/state on the outer agent while
- * delegating each low-level run to a fresh BuiltInAgent instance.
- *
- * Channels may re-enter the same turn after tool results as soon as the previous
- * observable completes. BuiltInAgent clears its private abort controller later,
- * in its async cleanup, so reusing one instance can trip its reentry guard. This
- * facade leaves AbstractAgent.runAgent untouched and swaps only run(input), which
- * gives every invocation a clean inner agent without changing the shared web and
- * mobile makeAgent factory.
+/** @accord/channel — Channels agent factory.
+ * Fresh BuiltInAgent with narrow prompt bounded to persisted investigation evidence.
  */
-export class ChannelRunAgent extends AbstractAgent {
-  private activeInner: AbstractAgent | undefined;
+import { BuiltInAgent } from '@copilotkit/runtime/v2';
 
-  constructor(
-    private agentFactory: ChannelAgentFactory = makeAgent,
-    threadId?: string,
-  ) {
-    super({ threadId });
-  }
-
-  override run(input: RunAgentInput): Observable<BaseEvent> {
-    return new Observable<BaseEvent>((subscriber) => {
-      let inner: AbstractAgent | undefined;
-      let subscription: Subscription | undefined;
-
-      const release = () => {
-        if (this.activeInner === inner) {
-          this.activeInner = undefined;
-        }
-      };
-
-      try {
-        inner = this.agentFactory(input.threadId);
-        inner.threadId = input.threadId;
-        this.activeInner = inner;
-        subscription = inner.run(input).subscribe({
-          next: (event) => {
-            subscriber.next(event);
-          },
-          error: (error) => {
-            release();
-            subscriber.error(error);
-          },
-          complete: () => {
-            release();
-            subscriber.complete();
-          },
-        });
-      } catch (error) {
-        release();
-        subscriber.error(error);
-      }
-
-      return () => {
-        subscription?.unsubscribe();
-        inner?.abortRun();
-        release();
-      };
-    });
-  }
-
-  override abortRun() {
-    this.activeInner?.abortRun();
-    super.abortRun();
-  }
-
-  override clone(): ChannelRunAgent {
-    const cloned = super.clone() as ChannelRunAgent;
-    cloned.agentFactory = this.agentFactory;
-    cloned.activeInner = undefined;
-    return cloned;
-  }
-}
-
-export function makeChannelAgent(threadId: string) {
-  return new ChannelRunAgent(makeAgent, threadId);
+export function makeChannelAgent(threadId: string): BuiltInAgent {
+  const model = process.env.ACCORD_MODEL || 'openai:gpt-4o-mini';
+  const agent = new BuiltInAgent({
+    model,
+    maxSteps: 5,
+    prompt: `You are Accord, a compliance and retention decision assistant for Slack.
+Your responsibilities:
+- Show persisted investigation findings and current decision status using the available tools.
+- Never invent retention rules, policy calculations, or data counts outside of ApplicationPort findings.
+- When an owner asks about status, use get_current_finding to display the exact persisted record.
+- Explain status calmly and accurately.`,
+  });
+  agent.threadId = threadId;
+  return agent;
 }
