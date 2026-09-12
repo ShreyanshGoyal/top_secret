@@ -1,0 +1,17 @@
+{
+  "name": "@accord/slack-delivery",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Background Slack Web API delivery and deterministic finding rendering. Owner: Agent 2.",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@accord/contracts": "*"
+  }
+}

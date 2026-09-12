@@ -1,0 +1,87 @@
+{
+  "kind": "specification_artifacts_not_product_test_results",
+  "version": "1.0",
+  "files": [
+    {
+      "path": "03-AGENT-2-SLACK.md",
+      "bytes": 14876,
+      "sha256": "39c3f6f001c1e9b8691b6441e33decc8081e6b958f3b1d43114d592b87982c5f"
+    },
+    {
+      "path": "04-AGENT-3-REPOSITORY.md",
+      "bytes": 15752,
+      "sha256": "f237a990eff07663b17fefbe010975d3ce0ff81fe1c5e8fc164ddfe16dfd4c46"
+    },
+    {
+      "path": "contracts.ts",
+      "bytes": 11249,
+      "sha256": "c4cbedf437d6811feb9572a3cfedaf5a1a8fde30ef54bd766e32d28acb5734a1"
+    },
+    {
+      "path": "08-AGENT-LAUNCH-PROMPTS.md",
+      "bytes": 4492,
+      "sha256": "02d7f6b14789f828ce7fe9e8c64f5e9ddfff51dbc1cbcfa52704fcbddce873f4"
+    },
+    {
+      "path": "06-ACCEPTANCE-AND-REVIEW.md",
+      "bytes": 13304,
+      "sha256": "8b3861a358728ac5e1846f805664df389021454cc187edb6c6af41a2a4536b76"
+    },
+    {
+      "path": "05-AGENT-4-DATA-INTEGRATION.md",
+      "bytes": 16639,
+      "sha256": "014e804bc29af64bb1dfaae665a6288bdce6fbb5d3bcf5fddc1a71e5912200a4"
+    },
+    {
+      "path": "ACCORD-COMPLETE-SPEC.md",
+      "bytes": 128699,
+      "sha256": "c60a1f3b55b320fbbdbe37ef9113a07ac1d3dafe1d5509312b9b02d21dc1f0a5"
+    },
+    {
+      "path": "01-SHARED-CONTRACTS.md",
+      "bytes": 20516,
+      "sha256": "1ef441cbc14bcc63d92ca8c7e0743e943fa56d50d3c95e207b2ebd4068614c3d"
+    },
+    {
+      "path": "07-SOURCES-AND-DECISIONS.md",
+      "bytes": 3630,
+      "sha256": "3c6c54e5751dbd3399dd8c4461a340e02ac5969829a248f865c3d06e5c30af08"
+    },
+    {
+      "path": "00-START-HERE.md",
+      "bytes": 12534,
+      "sha256": "f2b1d85df68fcbacf6721089821adf5a1b2613168891b4c5059e2ac64b5677dd"
+    },
+    {
+      "path": "02-AGENT-1-CORE.md",
+      "bytes": 15449,
+      "sha256": "e7e70c714e9f6698b12fca807de77df22a8ea3fdb9728bfe9be1f0d5e9bd4142"
+    },
+    {
+      "path": "handoffs/AGENT-3-COMPLETE-HANDOFF.md",
+      "bytes": 81782,
+      "sha256": "79825c8a4f81d451f275d8ff192dd2384e27999af425a9eea4eba8ea12823051"
+    },
+    {
+      "path": "handoffs/AGENT-2-COMPLETE-HANDOFF.md",
+      "bytes": 80906,
+      "sha256": "7b8e28bc1092ed62e07bf5cb56b1a9badbd45254b6106653e9ae1cf91d4113ee"
+    },
+    {
+      "path": "handoffs/AGENT-1-COMPLETE-HANDOFF.md",
+      "bytes": 81479,
+      "sha256": "7cb57963ae4a57fc6b0d0f4dafa7bba48de4bd8c3357dab7a46af6a22f330276"
+    },
+    {
+      "path": "handoffs/AGENT-4-COMPLETE-HANDOFF.md",
+      "bytes": 82669,
+      "sha256": "e8c17e5fca0b982241da615e20acb520e60da1d582cdf830020c94ddc4703654"
+    }
+  ],
+  "checks": [
+    "Balanced Markdown code fences",
+    "Shared receipt/enrollment/revision/null-run types present",
+    "Fixture arithmetic independently checked:17/10/7"
+  ],
+  "source_words": 15394
+}

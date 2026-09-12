@@ -1,0 +1,17 @@
+{
+  "name": "@accord/privacy",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared sanitization, audience assertion and safe logging. Owner: Agent 4.",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@accord/contracts": "*"
+  }
+}

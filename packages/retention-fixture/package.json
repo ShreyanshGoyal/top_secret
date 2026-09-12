@@ -1,0 +1,14 @@
+{
+  "name": "@accord/retention-fixture",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Trusted synthetic retention policy parser, resolver and dry-run evaluator. Owner: Agent 3.",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "@accord/core",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Accord coordinator: interpretation, authorization, investigation orchestration and publication. Owner: Agent 1.",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@accord/contracts": "*",
+    "@accord/store": "*"
+  }
+}

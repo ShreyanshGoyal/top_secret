@@ -1,0 +1,17 @@
+{
+  "name": "@accord/store",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "PostgreSQL durable state for Accord: threads, decisions, investigations, findings, outbox. Owner: Agent 1.",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@accord/contracts": "*"
+  }
+}

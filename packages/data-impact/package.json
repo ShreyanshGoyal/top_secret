@@ -1,0 +1,17 @@
+{
+  "name": "@accord/data-impact",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Restricted read-only ClickHouse impact analysis. Owner: Agent 4.",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@accord/contracts": "*"
+  }
+}

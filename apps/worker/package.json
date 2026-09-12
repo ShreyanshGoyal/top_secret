@@ -1,0 +1,16 @@
+{
+  "name": "worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Trigger.dev worker hosting the four Accord tasks. Owner: Agent 1.",
+  "license": "MIT",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@accord/contracts": "*",
+    "@accord/core": "*",
+    "@accord/store": "*"
+  }
+}

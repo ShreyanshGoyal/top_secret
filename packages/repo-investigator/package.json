@@ -1,0 +1,17 @@
+{
+  "name": "@accord/repo-investigator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Bounded repository investigator over real GitHub evidence at a fixed SHA. Owner: Agent 3.",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@accord/contracts": "*"
+  }
+}

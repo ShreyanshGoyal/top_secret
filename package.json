@@ -1,0 +1,44 @@
+{
+  "name": "accord",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Accord catches when a Slack decision changes what software should do, investigates the implementation and affected data, and keeps the finding current until resolution is verified.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/channel",
+    "apps/web",
+    "apps/worker",
+    "fixtures/retention-app"
+  ],
+  "scripts": {
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "verify": "npm run typecheck && npm test",
+    "test:integration": "node tools/pending.mjs test:integration \"Agent 4\" tests/e2e",
+    "test:live": "node tools/pending.mjs test:live \"Agent 4\" tests/live",
+    "dev:slack": "npm run dev --workspace channel",
+    "dev:worker": "node tools/pending.mjs dev:worker \"Agent 1\" apps/worker",
+    "db:migrate": "node tools/pending.mjs db:migrate \"Agent 1\" packages/accord-store/migrations",
+    "demo:seed": "node tools/pending.mjs demo:seed \"Agent 4\" scripts/demo-seed.ts",
+    "demo:reset": "node tools/pending.mjs demo:reset \"Agent 4\" scripts/demo-reset.ts",
+    "demo:preflight": "node tools/pending.mjs demo:preflight \"Agent 4\" scripts/demo-preflight.ts",
+    "demo:prepare-prs": "node tools/pending.mjs demo:prepare-prs \"Agent 4\" scripts/demo-prepare-prs.ts",
+    "review:evidence": "node tools/pending.mjs review:evidence \"Agent 4\" scripts/review-evidence.ts",
+    "dev:web": "npm run dev --workspace web",
+    "channel:status": "npx copilotkit@latest channels status --json",
+    "channel:setup": "npx copilotkit@latest channels setup"
+  },
+  "overrides": {
+    "@ag-ui/client": "0.0.59"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.23.1",
+    "typescript": "^5.7.0"
+  }
+}

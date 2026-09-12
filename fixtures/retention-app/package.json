@@ -1,0 +1,14 @@
+{
+  "name": "@accord/retention-app-fixture",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Synthetic legacy retention application used as the investigation target. Owner: Agent 3.",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}
