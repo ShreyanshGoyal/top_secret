@@ -1,4 +1,4 @@
-/** OpenAI Responses adapter for decision interpretation.
+/** Decision interpretation through OpenAI Responses or Gemini-compatible chat completions.
  * Model id comes from configuration. Provider retries are disabled here so the Trigger task policy
  * owns retry behavior: one layer owns each provider retry, with no nested retry explosion.
  */
@@ -10,6 +10,7 @@ import { INTERPRETATION_JSON_SCHEMA } from './schema.js';
 
 export interface ModelConfig {
   apiKey: string;
+  provider?: 'openai' | 'google';
   model: string;
   maxOutputTokens?: number;
   requestTimeoutMs?: number;
@@ -56,11 +57,12 @@ function extract(response: ResponseLike): { text: string | null; refusal: string
 }
 
 export function createOpenAIModel(config: ModelConfig, deps: ModelDependencies): ModelPort {
-  if (!config.apiKey) throw new AccordError(publicError('AUTH', 'OPENAI_API_KEY is required'));
+  if (!config.apiKey) throw new AccordError(publicError('AUTH', 'Model API key is required'));
   if (!config.model) throw new AccordError(publicError('INVALID_INPUT', 'ACCORD_MODEL is required'));
 
   const client = new OpenAI({
     apiKey: config.apiKey,
+    ...(config.provider === 'google' ? { baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/' } : {}),
     // The task retry policy owns retries. An SDK default would multiply them.
     maxRetries: 0,
     timeout: config.requestTimeoutMs ?? 45_000,
@@ -69,21 +71,42 @@ export function createOpenAIModel(config: ModelConfig, deps: ModelDependencies):
   async function call(input: string, repairNote: string | null): Promise<Interpretation> {
     let response: ResponseLike;
     try {
-      response = await client.responses.create({
-        model: config.model,
-        instructions: repairNote ? `${INTERPRETER_INSTRUCTIONS}\n\nYour previous reply was rejected: ${repairNote}\nReturn only the valid object.` : INTERPRETER_INSTRUCTIONS,
-        input,
-        max_output_tokens: config.maxOutputTokens ?? 1_200,
-        text: {
-          format: {
-            type: 'json_schema',
-            name: 'interpretation',
-            strict: true,
+      if (config.provider === 'google') {
+        const completion = await client.chat.completions.create({
+          model: config.model,
+          messages: [
+            { role: 'system', content: repairNote ? `${INTERPRETER_INSTRUCTIONS}\nPrevious reply rejected: ${repairNote}` : INTERPRETER_INSTRUCTIONS },
+            { role: 'user', content: input },
+          ],
+          max_tokens: config.maxOutputTokens ?? 8192,
+          response_format: { type: 'json_schema', json_schema: {
+            name: 'interpretation', strict: true,
             schema: INTERPRETATION_JSON_SCHEMA as unknown as Record<string, unknown>,
+          } },
+        });
+        const choice = completion.choices[0];
+        if (!choice || choice.finish_reason !== 'stop' || choice.message.refusal) {
+          throw new AccordError(publicError('PROVIDER_ERROR', 'model returned an incomplete or refused interpretation'));
+        }
+        response = { output_text: choice.message.content ?? '' };
+      } else {
+        response = await client.responses.create({
+          model: config.model,
+          instructions: repairNote ? `${INTERPRETER_INSTRUCTIONS}\n\nYour previous reply was rejected: ${repairNote}\nReturn only the valid object.` : INTERPRETER_INSTRUCTIONS,
+          input,
+          max_output_tokens: config.maxOutputTokens ?? 1_200,
+          text: {
+            format: {
+              type: 'json_schema',
+              name: 'interpretation',
+              strict: true,
+              schema: INTERPRETATION_JSON_SCHEMA as unknown as Record<string, unknown>,
+            },
           },
-        },
-      }) as unknown as ResponseLike;
+        }) as unknown as ResponseLike;
+      }
     } catch (error) {
+      if (error instanceof AccordError) throw error;
       throw translate(error);
     }
 

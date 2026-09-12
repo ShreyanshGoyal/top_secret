@@ -1,10 +1,12 @@
 /** @accord/channel — Channels agent factory.
  * Fresh BuiltInAgent with narrow prompt bounded to persisted investigation evidence.
  */
+import { loadModelConfig } from '@accord/core';
 import { BuiltInAgent } from '@copilotkit/runtime/v2';
 
 export function makeChannelAgent(threadId: string): BuiltInAgent {
-  const model = process.env.ACCORD_MODEL || 'openai:gpt-4o-mini';
+  const config = loadModelConfig();
+  const model = `${config.provider}:${config.model}`;
   const agent = new BuiltInAgent({
     model,
     maxSteps: 5,

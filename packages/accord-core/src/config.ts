@@ -6,7 +6,7 @@ export type AccordMode = 'demo' | 'live';
 
 export interface AccordConfig {
   mode: AccordMode;
-  model: { apiKey: string; model: string };
+  model: { apiKey: string; model: string; provider?: 'openai' | 'google' };
   intelligence: { apiKey: string; channelCode: string };
   slack: { botToken: string; appToken: string; teamId: string; channelId: string; ownerUserId: string };
   github: { token: string; owner: string; name: string; ref: string; pathPrefix: string };
@@ -18,7 +18,7 @@ export interface AccordConfig {
 }
 
 export const REQUIRED_ENVIRONMENT_NAMES = [
-  'OPENAI_API_KEY', 'ACCORD_MODEL', 'INTELLIGENCE_API_KEY', 'CHANNEL_CODE', 'SLACK_BOT_TOKEN',
+  'ACCORD_MODEL', 'INTELLIGENCE_API_KEY', 'CHANNEL_CODE', 'SLACK_BOT_TOKEN',
   'SLACK_APP_TOKEN', 'ACCORD_SLACK_TEAM_ID', 'ACCORD_SLACK_CHANNEL_ID', 'ACCORD_OWNER_SLACK_USER_ID',
   'GITHUB_TOKEN', 'ACCORD_GITHUB_OWNER', 'ACCORD_GITHUB_REPO', 'ACCORD_REPO_REF', 'ACCORD_REPO_PATH_PREFIX',
   'DATABASE_URL', 'CLICKHOUSE_URL', 'CLICKHOUSE_USER', 'CLICKHOUSE_PASSWORD', 'CLICKHOUSE_DATABASE',
@@ -67,7 +67,7 @@ export function loadAccordConfig(environment: NodeJS.ProcessEnv = process.env): 
 
   return {
     mode,
-    model: { apiKey: required(environment, 'OPENAI_API_KEY'), model: required(environment, 'ACCORD_MODEL') },
+    model: loadModelConfig(environment),
     intelligence: { apiKey: required(environment, 'INTELLIGENCE_API_KEY'), channelCode: required(environment, 'CHANNEL_CODE') },
     slack: {
       botToken: required(environment, 'SLACK_BOT_TOKEN'),
@@ -112,4 +112,17 @@ export function systemClock(): ClockPort {
 export function datasetAsOf(config: AccordConfig, clock: ClockPort): string {
   if (config.mode === 'demo' && config.dataset.asOf) return config.dataset.asOf;
   return clock.now();
+}
+
+/** Shared selection for the coordinator, worker and live checks. */
+export function loadModelConfig(environment: NodeJS.ProcessEnv = process.env): AccordConfig['model'] {
+  const provider = environment.ACCORD_MODEL_PROVIDER ?? 'google';
+  if (provider !== 'google' && provider !== 'openai') {
+    throw new AccordError(publicError('INVALID_INPUT', 'ACCORD_MODEL_PROVIDER must be google or openai'));
+  }
+  return {
+    provider,
+    apiKey: required(environment, provider === 'google' ? 'GOOGLE_API_KEY' : 'OPENAI_API_KEY'),
+    model: required(environment, 'ACCORD_MODEL'),
+  };
 }

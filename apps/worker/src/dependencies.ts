@@ -64,7 +64,7 @@ export function investigationDependencies(): InvestigationDependencies & { store
   return {
     ...rest,
     scheduler: createTriggerScheduler(),
-    model: createOpenAIModel({ apiKey: config.model.apiKey, model: config.model.model }, providerDeps),
+    model: createOpenAIModel(config.model, providerDeps),
     repository: createRepositoryPort({
       repository: { owner: config.github.owner, name: config.github.name },
       pathPrefix: config.github.pathPrefix,

@@ -271,7 +271,9 @@ export class RepositoryInvestigator {
    * Dispatches function tools to OpenAI / Ollama / Gemini OpenAI-compatible endpoints.
    */
   private async runLiveLlmLoop(tools: ToolRegistry, intent: any): Promise<void> {
-    const baseUrl = process.env.OPENAI_BASE_URL || process.env.OLLAMA_BASE_URL || 'https://api.openai.com/v1';
+    const baseUrl = (process.env.ACCORD_MODEL_PROVIDER ?? 'google') === 'google'
+      ? 'https://generativelanguage.googleapis.com/v1beta/openai'
+      : process.env.OPENAI_BASE_URL || process.env.OLLAMA_BASE_URL || 'https://api.openai.com/v1';
     const apiKey = this.opts.config.openAIKey || process.env.OPENAI_API_KEY || 'ollama';
     const model = this.opts.config.model || 'gpt-4o';
 

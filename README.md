@@ -58,3 +58,19 @@ For a two-minute demo: show the enrolled owner decision, the conflict finding an
 ## Provenance
 
 The repository began from CopilotKit’s `agents-everywhere-starter-kit` at `6443333e4b81fd6e21a4f531bdeee3a71eccd7b5`; its MIT license remains. The inherited web/mobile examples are not Accord features. Accord’s build specification and acceptance rubric live in [`docs/build-spec/`](docs/build-spec/00-START-HERE.md).
+
+## Gemini model configuration
+
+Accord defaults to Google AI Studio with `gemini-3.5-flash`. Set
+`ACCORD_MODEL_PROVIDER=google`, `ACCORD_MODEL=gemini-3.5-flash`, and
+`GOOGLE_API_KEY` in the process environment. For the web example also set
+`MODEL_PROVIDER=google` and `MODEL=gemini-3.5-flash`. The Slack agent uses the
+same Accord provider/model. The coordinator uses Google's OpenAI-compatible
+chat endpoint with structured JSON output; repository tools use that endpoint
+as well. No OpenAI credit is required for these text workflows.
+
+To retain OpenAI, explicitly set `ACCORD_MODEL_PROVIDER=openai`, an OpenAI
+`ACCORD_MODEL`, and `OPENAI_API_KEY`. Voice is an inherited OpenAI-only example.
+Keep credentials out of commits. Run the provider suite with configuration loaded:
+`node --env-file=.env tools/live.mjs`. Provider tests do not establish a complete
+Slack end-to-end pass; channel setup and the live-flow runner remain separate.

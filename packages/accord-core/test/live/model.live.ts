@@ -7,19 +7,13 @@
 import assert from 'node:assert/strict';
 import { before, test } from 'node:test';
 import type { ModelPort, SlackMessage } from '@accord/contracts';
-import { createOpenAIModel } from '../../src/index.js';
+import { createOpenAIModel, loadModelConfig } from '../../src/index.js';
 import { OWNER, message, testPrivacy, fixedClock, silentLogger } from '../harness.js';
 
 let model: ModelPort;
 
 before(() => {
-  const apiKey = process.env['OPENAI_API_KEY'];
-  const configured = process.env['ACCORD_MODEL'];
-  if (!apiKey || !configured) {
-    // No silent skip: a live suite that cannot reach the provider has proven nothing.
-    throw new Error('Live model tests need OPENAI_API_KEY and ACCORD_MODEL. Nothing was verified.');
-  }
-  model = createOpenAIModel({ apiKey, model: configured }, { privacy: testPrivacy(), clock: fixedClock(), logger: silentLogger() });
+  model = createOpenAIModel(loadModelConfig(), { privacy: testPrivacy(), clock: fixedClock(), logger: silentLogger() });
 });
 
 function thread(...texts: string[]): SlackMessage[] {
