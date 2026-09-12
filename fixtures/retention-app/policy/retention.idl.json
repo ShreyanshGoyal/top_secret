@@ -1,5 +1,21 @@
 {
   "schemaVersion": 1,
   "defaultDays": 30,
-  "rules": []
+  "rules": [
+    {
+      "id": "verified-university-free",
+      "scope": {
+        "plans": [
+          "free"
+        ],
+        "organizationTypes": [
+          "university"
+        ],
+        "universityVerified": [
+          true
+        ]
+      },
+      "days": 90
+    }
+  ]
 }
