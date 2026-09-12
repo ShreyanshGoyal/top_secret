@@ -1,160 +1,129 @@
-/**
- * Agent-rendered components for the on-call agent.
- *
- * `defineChannelComponent` turns a component into a tool the agent can call to
- * draw UI itself. During an incident, a native card is easier to scan than a
- * paragraph, but everyone reads a card.
- *
- * One tree renders as Slack Block Kit, Teams Adaptive Cards, and Discord
- * components. A surface that cannot render a node skips it rather than failing.
+/** @accord/channel — Channels native JSX components.
+ * JSX components compiled with jsxImportSource: "@copilotkit/channels".
  */
 import {
-  defineChannelComponent,
-  Message,
-  Header,
-  Section,
-  Markdown,
-  Fields,
-  Field,
-  Context,
-  Divider,
   Actions,
   Button,
-  Table,
-  Row,
-  Cell,
-} from "@copilotkit/channels";
-import { z } from "zod";
+  Context,
+  Divider,
+  Field,
+  Fields,
+  Header,
+  Markdown,
+  Message,
+  Section,
+} from '@copilotkit/channels';
+import type { Finding, ThreadView } from '@accord/contracts';
+import { formatScope } from '@accord/slack-delivery';
 
-/** Severity drives the colour rail, so the channel can triage by glance. */
-const SEVERITY = {
-  sev1: { accent: "#C4145F", label: "SEV1 · customer-facing" },
-  sev2: { accent: "#8A5C10", label: "SEV2 · degraded" },
-  sev3: { accent: "#5B6478", label: "SEV3 · internal" },
-  resolved: { accent: "#2E7D5B", label: "RESOLVED" },
-} as const;
-
-/**
- * The state of the incident, as one glanceable card.
- *
- * Deliberately has no "what happened" prose field. The thread is the narrative;
- * this is the summary a person joining at minute 40 needs.
- */
-export const IncidentCard = defineChannelComponent({
-  name: "incident_card",
-  description:
-    "Draw the current state of the incident as a card: severity, what is affected, what is known, and what is being tried. Call this once you have read the thread, and call it again when the picture changes. Prefer it over describing the incident in prose.",
-  parameters: z.object({
-    severity: z.enum(["sev1", "sev2", "sev3", "resolved"]),
-    headline: z.string().describe("What is broken, in under ten words."),
-    impact: z.string().describe("Who or what is affected, concretely."),
-    started: z.string().describe("When it started, as stated in the thread. 'unknown' is a valid answer."),
-    known: z.array(z.string()).max(4).default([]).describe("What the thread has established."),
-    trying: z.array(z.string()).max(3).default([]).describe("What is currently being attempted."),
-    owner: z.string().optional().describe("Who is driving, if the thread says."),
-  }),
-  render({ severity, headline, impact, started, known, trying, owner }) {
-    const sev = SEVERITY[severity];
-    return (
-      <Message accent={sev.accent}>
-        <Header>{headline}</Header>
-        <Context>{sev.label}</Context>
-        <Fields>
-          <Field label="Impact">{impact}</Field>
-          <Field label="Started">{started}</Field>
-          {owner && <Field label="Driving">{owner}</Field>}
-        </Fields>
-        {known.length > 0 && (
-          <Section>
-            <Markdown>{`*What we know*\n${known.map((k) => `• ${k}`).join("\n")}`}</Markdown>
-          </Section>
-        )}
-        {trying.length > 0 && (
-          <Section>
-            <Markdown>{`*Being tried*\n${trying.map((t) => `• ${t}`).join("\n")}`}</Markdown>
-          </Section>
-        )}
-      </Message>
-    );
-  },
-});
-
-/**
- * The incident timeline. Handover and the postmortem both run on this, which is
- * why it is worth keeping in the thread rather than someone's notes app.
- */
-export const Timeline = defineChannelComponent({
-  name: "timeline",
-  description:
-    "Draw an ordered timeline of what happened when. Call this when there are three or more events worth ordering — it is what on-call handover and the postmortem are written from.",
-  parameters: z.object({
-    title: z.string().default("Timeline"),
-    events: z
-      .array(
-        z.object({
-          at: z.string().describe("Time as the thread states it, e.g. '02:14' or '~20m ago'."),
-          what: z.string().describe("What happened, in one line."),
-          who: z.string().optional(),
-        }),
-      )
-      .min(1)
-      .max(12),
-  }),
-  render({ title, events }) {
-    return (
-      <Message>
-        <Header>{title}</Header>
-        <Table
-          columns={[{ header: "When" }, { header: "What" }, { header: "Who" }]}
-        >
-          {events.map((event) => (
-            <Row>
-              <Cell>{event.at}</Cell>
-              <Cell>{event.what}</Cell>
-              <Cell>{event.who ?? "—"}</Cell>
-            </Row>
-          ))}
-        </Table>
-        <Divider />
-        <Context>{`${events.length} event(s) · newest last`}</Context>
-      </Message>
-    );
-  },
-});
-
-/**
- * The welcome message. A bot that says nothing when invited looks broken; one
- * that says what it will do on its own gets used.
- */
-export function welcomeMessage(platform: string) {
+export function EnrollmentCard() {
   return (
-    <Message accent="#C4145F">
-      <Header>On-call assistant, in the thread</Header>
+    <Message accent="#2EB67D">
+      <Header>Accord Active</Header>
       <Section>
         <Markdown>
-          {"When something breaks, @-mention me. I read what has already been said in this " +
-            platform +
-            " thread first — you should never have to re-explain an outage to me."}
+          Accord is following this thread. I will compare confirmed retention decisions with the implementation and stored-record impact.
         </Markdown>
       </Section>
-      <Fields>
-        <Field label="I will">Summarise, keep a timeline, look things up</Field>
-        <Field label="I won't">Touch production without a click</Field>
-      </Fields>
+    </Message>
+  );
+}
+
+export interface StatusCardProps {
+  view: ThreadView;
+}
+
+export function StatusCard({ view }: StatusCardProps) {
+  if (!view.enrolled || !view.finding) {
+    return <EnrollmentCard />;
+  }
+
+  const { finding, decision, contextRevision } = view;
+  const statusLabel = finding.status.replace(/_/g, ' ').toUpperCase();
+
+  return (
+    <Message accent={finding.status === 'confirmed_conflict' ? '#E01E5A' : '#36C5F0'}>
+      <Header>{finding.title || 'Accord Finding'}</Header>
+      <Section>
+        <Markdown>**Status:** {statusLabel} · Decision v{finding.decisionVersion}</Markdown>
+      </Section>
+      {decision?.intent && (
+        <Section>
+          <Markdown>{formatScope(decision.intent.scope, decision.intent.retentionDays)}</Markdown>
+        </Section>
+      )}
+      {finding.impact && finding.impact.status === 'complete' && (
+        <Fields>
+          <Field label="Premature Records">
+            {finding.impact.prematurelySelectedRecords !== null ? String(finding.impact.prematurelySelectedRecords) : 'unknown'}
+          </Field>
+          <Field label="Affected Accounts">
+            {finding.impact.prematurelySelectedAccounts !== null ? String(finding.impact.prematurelySelectedAccounts) : 'unknown'}
+          </Field>
+          <Field label="Total Inspected">
+            {finding.impact.observedSelectedTotal !== null ? String(finding.impact.observedSelectedTotal) : 'unknown'}
+          </Field>
+        </Fields>
+      )}
+      {finding.question && (
+        <Section>
+          <Markdown>**Clarification:** {finding.question}</Markdown>
+        </Section>
+      )}
+      <Divider />
+      <Context>Accord finding {finding.id} · revision {contextRevision}</Context>
+    </Message>
+  );
+}
+
+export interface ConfirmationCardProps {
+  decisionId: string;
+  expectedVersion: number;
+  expectedContextRevision: number;
+  onAction?: (kind: 'confirm' | 'tentative' | 'withdraw') => Promise<void>;
+}
+
+export function ConfirmationCard({
+  decisionId,
+  expectedVersion,
+  expectedContextRevision,
+  onAction,
+}: ConfirmationCardProps) {
+  return (
+    <Message accent="#4A154B">
+      <Header>Decision Review</Header>
+      <Section>
+        <Markdown>Confirm the current interpretation to authorize investigation against repository policy.</Markdown>
+      </Section>
       <Actions>
         <Button
-          value="catchup"
           style="primary"
-          onClick={async ({ thread }) => {
-            await thread.runAgent({
-              prompt:
-                "Read this thread and bring me up to speed on the incident. Draw the incident card.",
-            });
+          value="confirm"
+          onClick={async () => {
+            if (onAction) await onAction('confirm');
           }}
         >
-          Catch me up
+          Confirm interpretation
+        </Button>
+        <Button
+          value="tentative"
+          onClick={async () => {
+            if (onAction) await onAction('tentative');
+          }}
+        >
+          Mark tentative
+        </Button>
+        <Button
+          style="danger"
+          value="withdraw"
+          onClick={async () => {
+            if (onAction) await onAction('withdraw');
+          }}
+        >
+          Withdraw
         </Button>
       </Actions>
+      <Context>decision:{decisionId} · v{expectedVersion} · rev{expectedContextRevision}</Context>
     </Message>
   );
 }
