@@ -62,10 +62,16 @@ in your handoff; Agent 1 applies them. Never create an alternative copy of anoth
 
 ## Root commands
 
-`npm ci` · `npm run typecheck` · `npm test` · `npm run verify` · `npm run test:integration` ·
-`npm run test:live` · `npm run dev:slack` · `npm run dev:worker` · `npm run db:migrate` ·
-`npm run demo:seed` · `npm run demo:reset` · `npm run demo:preflight` · `npm run demo:prepare-prs` ·
-`npm run review:evidence`
+`npm ci` · `npm run typecheck` · `npm test` · `npm run verify` — offline, no credentials.
 
-Unimplemented commands exit nonzero through `tools/pending.mjs` and name their owner. Replacing one
-with a script that only prints success is a review failure.
+`npm run dev:up` / `dev:down` — local PostgreSQL and ClickHouse from `infra/compose.yaml`.
+`npm run db:migrate` — PostgreSQL schema. `npm run demo:seed` — the immutable ClickHouse dataset.
+`npm run dev:slack` — the CopilotKit Slack bridge. `npm run dev:worker` — the Trigger.dev worker.
+`npm run demo:preflight` · `demo:reset` · `demo:prepare-prs` · `review:evidence`.
+
+`npm run test:integration` — real PostgreSQL and ClickHouse: the store suite, then the e2e suite.
+`npm run test:live` — real provider checks, then the live end-to-end flow check.
+
+Every command that needs a real service names the missing configuration and exits nonzero rather
+than reporting a pass it has not earned. `tools/pending.mjs` is the helper for that, and any root
+script added for work that is not finished yet must use it instead of printing success.
