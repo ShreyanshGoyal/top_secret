@@ -8,7 +8,9 @@ function configuration() {
 async function post(sql: string, body?: string): Promise<string> {
   const config = configuration(); const url = new URL(config.endpoint);
   url.searchParams.set('database', config.database);
-  const response = await fetch(url, { method: 'POST', body: body ?? sql, headers: { authorization: `Basic ${Buffer.from(`${config.username}:${config.password}`).toString('base64')}`, 'content-type': body ? 'application/json' : 'text/plain' } });
+  // ClickHouse's HTTP endpoint receives the query followed by FORMAT payload rows in one body.
+  // Sending only JSON makes ClickHouse parse the first record as SQL.
+  const response = await fetch(url, { method: 'POST', body: body ? `${sql}\n${body}` : sql, headers: { authorization: `Basic ${Buffer.from(`${config.username}:${config.password}`).toString('base64')}`, 'content-type': 'text/plain' } });
   if (!response.ok) throw new Error(`ClickHouse admin request failed with HTTP ${response.status}.`);
   return response.text();
 }

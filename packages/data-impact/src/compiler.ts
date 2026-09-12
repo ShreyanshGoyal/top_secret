@@ -26,7 +26,12 @@ function policyDays(parameters: QueryParameters, prefix: string, projection: Ret
 /** Compiles only validated projections into fixed SQL identifiers and typed parameters. */
 export function compileImpactQuery(input: ImpactRequest): CompiledImpactQuery {
   const request = validate(ImpactRequestSchema, input, 'Impact request');
-  const parameters: QueryParameters = { dataset_version: request.run.datasetVersion, as_of: request.run.asOf };
+  // ClickHouse's typed DateTime64 parameter parser expects its server literal form. Contract and
+  // persisted timestamps remain canonical UTC ISO; this conversion exists only on the SQL boundary.
+  const parameters: QueryParameters = {
+    dataset_version: request.run.datasetVersion,
+    as_of: request.run.asOf.replace('T', ' ').replace('Z', ''),
+  };
   const inScope = assignScope(parameters, 'intent', request.intent.scope);
   const observedDays = policyDays(parameters, 'observed', request.observedProjection);
   const baselineDays = policyDays(parameters, 'baseline', request.baselineProjection);

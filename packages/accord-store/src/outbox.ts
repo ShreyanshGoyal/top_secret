@@ -142,6 +142,7 @@ export async function claimDueOutboxRow(
         WHERE next_attempt_at <= now()
           AND (
             status IN ('pending', 'retryable', 'uncertain')
+            OR (status = 'sending' AND lease_owner = $1)
             OR (status = 'sending' AND lease_until IS NOT NULL AND lease_until < now())
           )
         ORDER BY next_attempt_at, publication_revision
@@ -171,6 +172,7 @@ export async function claimOutboxRow(
        AND next_attempt_at <= now()
        AND (
          status IN ('pending', 'retryable', 'uncertain')
+         OR (status = 'sending' AND lease_owner = $2)
          OR (status = 'sending' AND lease_until IS NOT NULL AND lease_until < now())
        )
      RETURNING ${OUTBOX_COLUMNS}`,
