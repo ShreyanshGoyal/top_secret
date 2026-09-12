@@ -1,0 +1,25 @@
+{
+  "generatorVersion": "accord-retention-generator/1",
+  "sourceSha256": "29f6a2c6bd2f90c95855a44d07820cf571eb2e4db39c39297b6a67fafc61a24c",
+  "policy": {
+    "schemaVersion": 1,
+    "defaultDays": 30,
+    "rules": [
+      {
+        "id": "verified-university-free",
+        "scope": {
+          "plans": [
+            "free"
+          ],
+          "organizationTypes": [
+            "university"
+          ],
+          "universityVerified": [
+            true
+          ]
+        },
+        "days": 90
+      }
+    ]
+  }
+}

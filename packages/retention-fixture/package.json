@@ -9,6 +9,10 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test test/retention-fixture.test.ts"
+  },
+  "dependencies": {
+    "@accord/contracts": "*"
   }
 }

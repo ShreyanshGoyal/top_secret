@@ -6,9 +6,18 @@
   "description": "Synthetic legacy retention application used as the investigation target. Owner: Agent 3.",
   "license": "MIT",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./resolver": "./src/policy-resolver.ts",
+    "./cleanup": "./src/cleanup.ts",
+    "./display": "./src/display-policy.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "generate": "node --import tsx scripts/generate.ts",
+    "test": "node --import tsx --test test/retention.test.ts"
+  },
+  "dependencies": {
+    "@accord/contracts": "*",
+    "@accord/retention-fixture": "*"
   }
 }
