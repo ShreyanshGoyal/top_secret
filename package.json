@@ -19,11 +19,11 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "verify": "npm run typecheck && npm test",
-    "test:integration": "node tools/pending.mjs test:integration \"Agent 4\" tests/e2e",
-    "test:live": "node tools/pending.mjs test:live \"Agent 4\" tests/live",
+    "test:integration": "node tools/integration.mjs",
+    "test:live": "node tools/live.mjs",
     "dev:slack": "npm run dev --workspace channel",
-    "dev:worker": "node tools/pending.mjs dev:worker \"Agent 1\" apps/worker",
-    "db:migrate": "node tools/pending.mjs db:migrate \"Agent 1\" packages/accord-store/migrations",
+    "dev:worker": "trigger dev",
+    "db:migrate": "node --import tsx tools/migrate.ts",
     "demo:seed": "node tools/pending.mjs demo:seed \"Agent 4\" scripts/demo-seed.ts",
     "demo:reset": "node tools/pending.mjs demo:reset \"Agent 4\" scripts/demo-reset.ts",
     "demo:preflight": "node tools/pending.mjs demo:preflight \"Agent 4\" scripts/demo-preflight.ts",
@@ -38,6 +38,8 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "@types/pg": "8.23.1",
+    "trigger.dev": "4.5.16",
     "tsx": "^4.23.1",
     "typescript": "^5.7.0"
   }

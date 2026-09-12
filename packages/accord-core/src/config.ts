@@ -30,3 +30,86 @@ export const DEMO_ONLY_ENVIRONMENT_NAMES = [
 ] as const;
 
 export type RequiredEnvironmentName = (typeof REQUIRED_ENVIRONMENT_NAMES)[number];
+
+import { AccordError, isIsoTime, normalizeIsoTime, publicError } from '@accord/contracts';
+import type { ClockPort } from '@accord/contracts';
+
+function required(environment: NodeJS.ProcessEnv, name: string): string {
+  const value = environment[name];
+  if (value === undefined || value.trim() === '') {
+    // Missing live configuration fails clearly. There is no fallback to a test double.
+    throw new AccordError(publicError('INVALID_INPUT', `${name} is required but not set`));
+  }
+  return value.trim();
+}
+
+function optional(environment: NodeJS.ProcessEnv, name: string): string | null {
+  const value = environment[name];
+  return value === undefined || value.trim() === '' ? null : value.trim();
+}
+
+/** Parses and validates the whole runtime configuration. Each factory still validates its own slice. */
+export function loadAccordConfig(environment: NodeJS.ProcessEnv = process.env): AccordConfig {
+  const mode = required(environment, 'ACCORD_MODE');
+  if (mode !== 'demo' && mode !== 'live') {
+    throw new AccordError(publicError('INVALID_INPUT', 'ACCORD_MODE must be demo or live'));
+  }
+
+  const asOf = optional(environment, 'ACCORD_DEMO_AS_OF');
+  if (asOf !== null && !isIsoTime(asOf)) {
+    throw new AccordError(publicError('INVALID_INPUT', 'ACCORD_DEMO_AS_OF must be UTC ISO 8601 with milliseconds'));
+  }
+
+  const port = Number.parseInt(required(environment, 'PORT'), 10);
+  if (!Number.isInteger(port) || port <= 0) {
+    throw new AccordError(publicError('INVALID_INPUT', 'PORT must be a positive integer'));
+  }
+
+  return {
+    mode,
+    model: { apiKey: required(environment, 'OPENAI_API_KEY'), model: required(environment, 'ACCORD_MODEL') },
+    intelligence: { apiKey: required(environment, 'INTELLIGENCE_API_KEY'), channelCode: required(environment, 'CHANNEL_CODE') },
+    slack: {
+      botToken: required(environment, 'SLACK_BOT_TOKEN'),
+      appToken: required(environment, 'SLACK_APP_TOKEN'),
+      teamId: required(environment, 'ACCORD_SLACK_TEAM_ID'),
+      channelId: required(environment, 'ACCORD_SLACK_CHANNEL_ID'),
+      ownerUserId: required(environment, 'ACCORD_OWNER_SLACK_USER_ID'),
+    },
+    github: {
+      token: required(environment, 'GITHUB_TOKEN'),
+      owner: required(environment, 'ACCORD_GITHUB_OWNER'),
+      name: required(environment, 'ACCORD_GITHUB_REPO'),
+      ref: required(environment, 'ACCORD_REPO_REF'),
+      pathPrefix: required(environment, 'ACCORD_REPO_PATH_PREFIX'),
+    },
+    postgres: { databaseUrl: required(environment, 'DATABASE_URL') },
+    clickhouse: {
+      url: required(environment, 'CLICKHOUSE_URL'),
+      username: required(environment, 'CLICKHOUSE_USER'),
+      password: required(environment, 'CLICKHOUSE_PASSWORD'),
+      database: required(environment, 'CLICKHOUSE_DATABASE'),
+    },
+    trigger: { secretKey: required(environment, 'TRIGGER_SECRET_KEY'), projectRef: required(environment, 'TRIGGER_PROJECT_REF') },
+    dataset: { version: required(environment, 'ACCORD_DATASET_VERSION'), asOf },
+    port,
+  };
+}
+
+/** Optional: our own bot user id, so this app's findings never re-trigger an investigation. */
+export function botUserIdFromEnvironment(environment: NodeJS.ProcessEnv = process.env): string | null {
+  return optional(environment, 'ACCORD_BOT_USER_ID');
+}
+
+export function systemClock(): ClockPort {
+  return { now: () => normalizeIsoTime(new Date()) };
+}
+
+/**
+ * The as-of instant used by an investigation. In demo mode it is the fixed configured clock, so
+ * evaluation never depends on wall time; in live mode it is the moment the run starts.
+ */
+export function datasetAsOf(config: AccordConfig, clock: ClockPort): string {
+  if (config.mode === 'demo' && config.dataset.asOf) return config.dataset.asOf;
+  return clock.now();
+}

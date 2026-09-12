@@ -1,9 +1,10 @@
 /** @accord/store public type surface. Owner: Agent 1.
  * PostgreSQL is the durable authority. Only @accord/core and apps/worker consume this package;
- * Agents 2, 3 and 4 depend on @accord/contracts and the core ApplicationPort instead.
+ * Agents 2, 3 and 4 depend on @accord/contracts and the core ApplicationPort instead, so this
+ * surface may still evolve on accord/core without a contract version bump.
  */
 import type {
-  Decision, DecisionStatus, Finding, Id, InboundEvent, IsoTime, OwnerAction, Publication,
+  CommitTarget, Decision, DecisionStatus, Finding, Id, InboundEvent, IsoTime, OwnerAction, Publication,
   PublicationReceipt, PublicationReceiptReader, RepositoryReport, RunContext, ThreadRef, ThreadView,
 } from '@accord/contracts';
 
@@ -13,6 +14,11 @@ export interface StoreConfig {
   statementTimeoutMs: number;
 }
 
+export const DEFAULT_STORE_CONFIG = {
+  maxConnections: 10,
+  statementTimeoutMs: 15_000,
+} as const;
+
 export interface ThreadRow {
   id: Id;
   thread: ThreadRef;
@@ -21,8 +27,6 @@ export interface ThreadRow {
   activeDecisionId: Id | null;
   activeVersion: number | null;
   findingMessageTs: string | null;
-  createdAt: IsoTime;
-  updatedAt: IsoTime;
 }
 
 export type JobTaskType = 'accord-process-context' | 'accord-investigate' | 'accord-publish' | 'accord-reconcile';
@@ -38,15 +42,22 @@ export interface JobIntent {
   nextAttemptAt: IsoTime | null;
 }
 
-export type DeliveryStatus = 'pending' | 'sending' | 'delivered' | 'uncertain' | 'retryable' | 'permanent_failure' | 'superseded';
+export type DeliveryStatus =
+  | 'pending' | 'sending' | 'delivered' | 'uncertain' | 'retryable' | 'permanent_failure' | 'superseded';
+
+/**
+ * The outbox stores everything about a publication except its text. Text is rendered at send time
+ * from the current persisted view, so a queued row can never deliver stale wording.
+ */
+export type PublicationDraft = Omit<Publication, 'text'>;
 
 export interface OutboxRow {
   id: Id;
   threadId: Id;
   findingId: Id;
-  publication: Publication;
+  draft: PublicationDraft;
   publicationRevision: number;
-  expectedDecisionVersion: number;
+  expectedVersion: number;
   expectedContextRevision: number;
   status: DeliveryStatus;
   attempts: number;
@@ -57,9 +68,11 @@ export interface OutboxRow {
 }
 
 export interface AcceptedEvent {
+  accepted: boolean;
   duplicate: boolean;
-  threadId: Id;
-  contextRevision: number;
+  reason: string | null;
+  threadId: Id | null;
+  contextRevision: number | null;
   jobIntent: JobIntent | null;
 }
 
@@ -69,6 +82,7 @@ export type InvestigationStatus =
 
 export interface InvestigationRow {
   id: Id;
+  threadId: Id;
   run: RunContext;
   status: InvestigationStatus;
   attempt: number;
@@ -76,39 +90,97 @@ export interface InvestigationRow {
   error: string | null;
 }
 
+export interface DecisionDraft {
+  decisionId: Id | null;
+  status: DecisionStatus;
+  intent: Decision['intent'];
+  intentHash: string | null;
+  ownerId: string;
+  sourceMessageIds: string[];
+  confirmedBy: string | null;
+  confirmedAt: IsoTime | null;
+  contextRevision: number;
+}
+
+/** The store assigns the finding's stable per-thread id and its revision. */
+export type FindingDraft = Omit<Finding, 'id' | 'updatedAt'>;
+
+export interface CommitOutcome {
+  committed: boolean;
+  reason: 'superseded' | null;
+  finding: Finding | null;
+  publication: PublicationDraft | null;
+  /** Persisted in the same transaction; dispatched to Trigger.dev after the commit. */
+  jobIntent: JobIntent | null;
+}
+
 /**
- * Every method is parameterized and transaction-aware. Callers never build SQL strings.
- * Methods that publish results compare decision version AND context revision inside one transaction.
+ * Every method is parameterized and transaction-aware; callers never build SQL strings.
+ * Any method that makes a result current compares decision version AND context revision
+ * inside one transaction.
  */
 export interface StorePort {
   migrate(): Promise<{ appliedVersion: number }>;
   close(): Promise<void>;
 
+  /** Never creates a thread. An unknown thread is enrolled=false, contextRevision=0, nulls. */
   getThreadView(thread: ThreadRef): Promise<ThreadView>;
-  acceptEvent(event: InboundEvent, options: { enrollIfMentioned: boolean }): Promise<AcceptedEvent>;
+  getThreadRow(thread: ThreadRef): Promise<ThreadRow | null>;
+  getThreadRowById(threadId: Id): Promise<ThreadRow | null>;
+
+  /** Durable acceptance: dedupe, enrollment, revision increment, job intent and fencing in one transaction. */
+  acceptEvent(event: InboundEvent): Promise<AcceptedEvent>;
+  markEventProcessed(eventKey: string): Promise<void>;
+  readEvent(eventKey: string): Promise<InboundEvent | null>;
 
   getActiveDecision(threadId: Id): Promise<Decision | null>;
-  appendDecisionVersion(input: { threadId: Id; decision: Omit<Decision, 'version'>; status: DecisionStatus }): Promise<Decision>;
-  recordOwnerAction(action: OwnerAction, outcome: string): Promise<void>;
+  getDecisionVersion(decisionId: Id, version: number): Promise<Decision | null>;
+  /** Returns null when the thread already advanced past draft.contextRevision. */
+  appendDecisionVersion(threadId: Id, draft: DecisionDraft): Promise<Decision | null>;
+  recordOwnerAction(action: OwnerAction, outcome: string): Promise<{ duplicate: boolean }>;
+  readOwnerAction(actionId: Id): Promise<{ outcome: string } | null>;
 
-  createInvestigation(run: RunContext): Promise<InvestigationRow>;
+  createInvestigation(threadId: Id, run: RunContext): Promise<InvestigationRow>;
+  getInvestigation(investigationId: Id): Promise<InvestigationRow | null>;
   updateInvestigationStatus(investigationId: Id, status: InvestigationStatus, error?: string | null): Promise<void>;
+  supersedeStaleInvestigations(threadId: Id, currentContextRevision: number): Promise<number>;
+  saveInvestigationTarget(input: { investigationId: Id; target: CommitTarget; kind: 'target' | 'base_target' }): Promise<void>;
   saveStepResult(input: { investigationId: Id; stepKey: string; inputHash: string; result: unknown }): Promise<void>;
   readStepResult(input: { investigationId: Id; stepKey: string; inputHash: string }): Promise<unknown | null>;
+
+  /** Baseline reports are frozen per decision version and never overwritten by a candidate report. */
   saveBaselineReport(input: { decisionId: Id; decisionVersion: number; report: RepositoryReport }): Promise<void>;
   readBaselineReport(input: { decisionId: Id; decisionVersion: number }): Promise<RepositoryReport | null>;
 
-  /** Saves the finding and its publication atomically, or returns superseded without writing. */
-  commitFinding(input: { threadId: Id; finding: Finding; publication: Publication }): Promise<{ committed: boolean; reason: 'superseded' | null }>;
+  /** Saves the finding and enqueues its publication atomically, or reports superseded without writing. */
+  commitFinding(input: { threadId: Id; finding: FindingDraft; now: IsoTime }): Promise<CommitOutcome>;
+  readFinding(findingId: Id): Promise<Finding | null>;
 
-  claimDueOutboxRow(input: { leaseOwner: string; leaseMs: number; now: IsoTime }): Promise<OutboxRow | null>;
-  completeDelivery(input: { outboxId: Id; status: DeliveryStatus; deliveredTs: string | null; error: string | null; nextAttemptAt: IsoTime | null }): Promise<void>;
-  recordPublicationReceipt(receipt: PublicationReceipt): Promise<void>;
+  claimDueOutboxRow(input: { leaseOwner: string; leaseMs: number }): Promise<OutboxRow | null>;
+  claimOutboxRow(input: { publicationId: Id; leaseOwner: string; leaseMs: number }): Promise<OutboxRow | null>;
+  enqueueCorrection(threadId: Id): Promise<{ publication: PublicationDraft; jobIntent: JobIntent | null } | null>;
+  readOutboxRow(publicationId: Id): Promise<OutboxRow | null>;
+  completeDelivery(input: {
+    publicationId: Id;
+    status: DeliveryStatus;
+    deliveredTs: string | null;
+    error: string | null;
+    retryAfterMs: number | null;
+  }): Promise<void>;
+  setThreadFindingMessageTs(threadId: Id, ts: string): Promise<void>;
+
+  recordPublicationReceipt(receipt: PublicationReceipt): Promise<{ recorded: boolean; reason: string | null }>;
   receiptReader(): PublicationReceiptReader;
 
-  enqueueJobIntent(intent: Omit<JobIntent, 'id' | 'status' | 'attempts' | 'triggerRunId'>): Promise<JobIntent>;
+  enqueueJobIntent(input: {
+    logicalKey: string;
+    taskType: JobTaskType;
+    payload: Record<string, unknown>;
+  }): Promise<{ intent: JobIntent; created: boolean }>;
   markJobDispatched(intentId: Id, triggerRunId: string): Promise<void>;
+  markJobCompleted(logicalKey: string): Promise<void>;
   listPendingJobIntents(limit: number): Promise<JobIntent[]>;
+  listDueOutboxIds(limit: number): Promise<Id[]>;
 }
 
 export type StoreFactory = (config: StoreConfig) => Promise<StorePort>;

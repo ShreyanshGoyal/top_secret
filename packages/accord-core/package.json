@@ -9,10 +9,15 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test 'test/**/*.test.ts'",
+    "test:live": "node --import tsx --test 'test/live/*.live.ts'"
   },
   "dependencies": {
     "@accord/contracts": "*",
-    "@accord/store": "*"
+    "@accord/privacy": "*",
+    "@accord/store": "*",
+    "@trigger.dev/sdk": "4.5.16",
+    "openai": "7.15.0"
   }
 }
