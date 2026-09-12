@@ -8,12 +8,14 @@
     "dev": "node --env-file=../../.env --import tsx --watch src/server.ts",
     "start": "node --env-file=../../.env --import tsx src/server.ts",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test 'src/**/*.test.tsx'"
+    "test": "node --import tsx --test 'src/test/**/*.test.ts*'"
   },
   "dependencies": {
+    "@accord/contracts": "*",
+    "@accord/core": "*",
+    "@accord/slack-delivery": "*",
     "@copilotkit/channels": "0.9.2",
     "@copilotkit/runtime": "1.70.3",
-    "agent-core": "*",
     "zod": "^4.1.0"
   }
 }

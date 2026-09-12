@@ -1,68 +1,117 @@
-import { createChannel } from "@copilotkit/channels";
-import { isSearchConfigured, isWorkplaceConfigured, WORKPLACE_CONTEXT } from "agent-core";
-import { makeChannelAgent } from "./agent";
-import { required } from "./env";
-import { IncidentCard, Timeline, welcomeMessage } from "./components";
-import { proposeAction, readThread, searchTheWeb } from "./tools";
+/** @accord/channel — CopilotKit Channels Slack channel setup.
+ * Handles direct Slack Socket Mode events, enrollment, inbound normalization, and native interaction routing.
+ */
+import { createChannel } from '@copilotkit/channels';
+import { slack, defaultSlackTools, defaultSlackContext } from '@copilotkit/channels/slack';
+import type { ApplicationPort, OwnerAction } from '@accord/contracts';
+import { randomUUID } from 'node:crypto';
+import { makeChannelAgent } from './agent.js';
+import { ConfirmationCard, EnrollmentCard, StatusCard } from './components.js';
+import type { ChannelAppConfig } from './config.js';
+import { normalizeInboundEvent, normalizeSlackMessage } from './normalize.js';
+import { createChannelTools } from './tools.js';
 
-// Tools are registered only when their credential is present, so the agent is
-// never handed a tool that will fail when it calls it.
-const tools = [
-  readThread,
-  proposeAction,
-  ...(isSearchConfigured() ? [searchTheWeb] : []),
-];
+export function createSlackChannel(app: ApplicationPort, config: ChannelAppConfig) {
+  const tools = [
+    ...createChannelTools(app, { teamId: config.teamId, channelId: config.channelId }),
+    ...defaultSlackTools,
+  ];
 
-export const channel = createChannel({
-  // Must equal the Channel Code in Intelligence, character for character. A
-  // mismatch leaves the Channel at "Waiting for runtime" and is validated at
-  // startup, not here.
-  name: required("CHANNEL_CODE"),
+  const channel = createChannel({
+    name: config.channelCode,
+    identifyUser: 'platform',
+    adapters: [
+      slack({
+        botToken: config.slackBotToken,
+        appToken: config.slackAppToken,
+      }),
+    ],
+    agent: makeChannelAgent,
+    tools,
+    context: [
+      ...defaultSlackContext,
+      {
+        description: 'Role',
+        value: 'Accord compliance and data retention verification assistant.',
+      },
+      {
+        description: 'Allowed Audience',
+        value: `Team: ${config.teamId}, Channel: ${config.channelId}`,
+      },
+    ],
+  });
 
-  // Required. "platform" derives the canonical user from provider + workspace +
-  // platform user id. Do NOT move this onto CopilotRuntime — that one is for
-  // web requests and must be absent on a Channels-only runtime.
-  identifyUser: "platform",
+  // Handle Mentions (Enrolls thread)
+  channel.onMention(async ({ thread, message }) => {
+    const rawText = message.text ?? '';
+    const msgRecord = message as unknown as Record<string, unknown>;
+    const userObj = message.user as { id?: string } | null;
+    const authorId = userObj?.id ?? (typeof msgRecord.user === 'string' ? msgRecord.user : (msgRecord.authorId as string | undefined)) ?? 'unknown';
+    const messageTs = (typeof msgRecord.ts === 'string' ? msgRecord.ts : null) ?? String(Date.now() / 1000);
+    const threadRecord = thread as unknown as Record<string, unknown>;
+    const rootTs = (threadRecord.rootTs as string | undefined) ?? (threadRecord.threadId as string | undefined) ?? (threadRecord.id as string | undefined) ?? messageTs;
 
-  agent: makeChannelAgent,
-  tools,
-  components: [IncidentCard, Timeline],
+    const inbound = normalizeInboundEvent(
+      {
+        teamId: config.teamId,
+        channelId: config.channelId,
+        rootTs,
+        messageTs,
+        authorId,
+        text: rawText,
+        wasMention: true,
+      },
+      { teamId: config.teamId, channelId: config.channelId },
+    );
 
-  // Injected into the agent's prompt on every run.
-  context: [
-    
-    {
-      description: "Rendering",
-      value:
-        "You can draw native UI by calling incident_card or timeline. Prefer them over prose whenever the answer has structure.",
-    },
-    ...(isWorkplaceConfigured()
-      ? [{ description: "Workplace", value: WORKPLACE_CONTEXT }]
-      : []),
-    {
-      description: "Surface",
-      value:
-        "This is a chat thread in a channel people are actively working in. Assume others are reading and that some joined late.",
-    },
-  ],
+    if (!inbound) {
+      return;
+    }
 
-});
+    const receipt = await app.acceptEvent(inbound);
+    if (receipt.accepted) {
+      await thread.subscribe();
+      await thread.post(EnrollmentCard());
+    }
+  });
 
-// A mention subscribes the conversation, so the agent then follows along instead
-// of needing to be @-mentioned every single turn.
-channel.onMention(async ({ thread }) => {
-  await thread.subscribe();
-  await thread.runAgent();
-});
+  // Handle Enrolled Messages
+  channel.onMessage(async ({ thread, message }) => {
+    const isSubscribed = await thread.isSubscribed();
+    if (!isSubscribed) {
+      return;
+    }
 
-// Non-mentioned turns only ever reach onMessage — gate them on the flag or the
-// agent will answer every message in every channel it has been invited to.
-channel.onMessage(async ({ thread }) => {
-  if (await thread.isSubscribed()) {
-    await thread.runAgent();
-  }
-});
+    const rawText = message.text ?? '';
+    const msgRecord = message as unknown as Record<string, unknown>;
+    const userObj = message.user as { id?: string } | null;
+    const authorId = userObj?.id ?? (typeof msgRecord.user === 'string' ? msgRecord.user : (msgRecord.authorId as string | undefined)) ?? 'unknown';
+    const messageTs = (typeof msgRecord.ts === 'string' ? msgRecord.ts : null) ?? String(Date.now() / 1000);
+    const threadRecord = thread as unknown as Record<string, unknown>;
+    const rootTs = (threadRecord.rootTs as string | undefined) ?? (threadRecord.threadId as string | undefined) ?? (threadRecord.id as string | undefined) ?? messageTs;
 
-channel.onWelcome(async ({ thread, platform }) => {
-  await thread.post(welcomeMessage(platform));
-});
+    const inbound = normalizeInboundEvent(
+      {
+        teamId: config.teamId,
+        channelId: config.channelId,
+        rootTs,
+        messageTs,
+        authorId,
+        text: rawText,
+        wasMention: false,
+      },
+      { teamId: config.teamId, channelId: config.channelId },
+    );
+
+    if (!inbound) {
+      return;
+    }
+
+    const receipt = await app.acceptEvent(inbound);
+    if (receipt.accepted) {
+      await thread.runAgent();
+    }
+  });
+
+  return channel;
+}
