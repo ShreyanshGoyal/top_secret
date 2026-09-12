@@ -3,6 +3,7 @@
  */
 import type {
   ClockPort, Id, ImpactPort, ModelPort, PrivacyPort, PublisherPort, RepositoryPort, SafeLoggerPort,
+  ThreadView,
 } from '@accord/contracts';
 import type { JobIntent, JobTaskType, StorePort } from '@accord/store';
 
@@ -29,7 +30,12 @@ export interface BaseDependencies {
 /** Ingress composition: accepting events and owner actions needs no model or provider access. */
 export interface IngressDependencies extends BaseDependencies {
   scheduler: JobSchedulerPort;
+  /** The one configured decision owner. Never inferred from message text. */
   ownerId: string;
+  /** Our own bot identity, so this app's findings can never re-trigger an investigation. */
+  botUserId: string | null;
+  repositoryTarget: { owner: string; name: string; ref: string; pathPrefix: string };
+  dataset: { version: string; asOf: string };
 }
 
 /** Investigation composition additionally supplies the model and the two specialist ports. */
@@ -39,9 +45,12 @@ export interface InvestigationDependencies extends IngressDependencies {
   impact: ImpactPort;
 }
 
-/** Publishing composition needs the transport publisher instead of the model. */
+/** Publishing composition needs the transport publisher instead of the model.
+ * `render` is Agent 2's deterministic renderer, injected so core never imports a transport package. */
 export interface PublishDependencies extends BaseDependencies {
   publisher: PublisherPort;
+  render: (view: ThreadView) => string;
+  leaseOwner: string;
 }
 
 export type CoreDependencies = InvestigationDependencies & PublishDependencies;
@@ -57,6 +66,8 @@ export interface InvestigationPayload {
   decisionId: Id;
   decisionVersion: number;
   contextRevision: number;
+  /** Set only for verify_pr runs, and always re-checked against the allowed repository. */
+  pullRequestUrl: string | null;
 }
 
 export interface Budgets {

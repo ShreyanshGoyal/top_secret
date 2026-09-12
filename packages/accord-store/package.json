@@ -9,9 +9,12 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test 'test/*.unit.test.ts'",
+    "test:pg": "node --import tsx --test 'test/*.integration.test.ts'"
   },
   "dependencies": {
-    "@accord/contracts": "*"
+    "@accord/contracts": "*",
+    "pg": "8.23.0"
   }
 }
