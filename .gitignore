@@ -1,5 +1,5 @@
 node_modules/
-.env
+# .env is tracked at the team's explicit decision; see team.env for the reasoning.
 .env.local
 *.log
 dist/
