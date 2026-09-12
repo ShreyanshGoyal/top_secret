@@ -1,0 +1,9 @@
+{
+  "generatorVersion": "accord-retention-generator/1",
+  "sourceSha256": "6f0f7232f47e74f837cb9d36060f90c2f8389f5ae5e2e7d7dec876dc25353e28",
+  "policy": {
+    "schemaVersion": 1,
+    "defaultDays": 90,
+    "rules": []
+  }
+}
